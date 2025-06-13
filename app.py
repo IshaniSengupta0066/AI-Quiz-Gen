@@ -5,18 +5,14 @@ import random
 import re
 from PyPDF2 import PdfReader
 
-# === NLTK Downloads ===
 nltk.download('punkt')
 nltk.download('averaged_perceptron_tagger')
 nltk.download('stopwords')
 
 from nltk import sent_tokenize, word_tokenize, pos_tag
 
-# Initialize Flask app
 app = Flask(__name__)
 Bootstrap(app)
-
-# === MCQ Generator ===
 
 def generate_mcqs(text, num_questions=5):
     if not text:
@@ -29,17 +25,14 @@ def generate_mcqs(text, num_questions=5):
         words = word_tokenize(sentence)
         tagged_words = pos_tag(words)
 
-        # Extract nouns, proper nouns, and numbers
         tokens = [word for word, pos in tagged_words if pos in ["NN", "NNS", "NNP", "NNPS", "CD"]]
 
-        # Also extract emails and IDs using regex
+    
         emails = re.findall(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b', sentence)
         ids = re.findall(r'\b\d{5,}\b', sentence)
 
-        # Combine all entities
         all_entities = list(set(tokens + emails + ids))
 
-        # Skip if not enough unique tokens
         if len(all_entities) < 4:
             continue
 
@@ -49,12 +42,11 @@ def generate_mcqs(text, num_questions=5):
         distractors = list(set(all_entities) - {subject})
         options = [subject] + random.sample(distractors, min(3, len(distractors)))
 
-        # If less than 4 options, fill with placeholder
         while len(options) < 4:
             options.append("RandomWord")
 
         random.shuffle(options)
-        correct_option_letter = chr(65 + options.index(subject))  # A, B, C, D
+        correct_option_letter = chr(65 + options.index(subject))  
 
         mcqs.append((question_stem, options, correct_option_letter))
 
@@ -63,28 +55,24 @@ def generate_mcqs(text, num_questions=5):
 
     return mcqs
 
-# === PDF Processing ===
-
 def process_pdf(file):
     text = ""
     pdf_reader = PdfReader(file)
     for page_num in range(len(pdf_reader.pages)):
         page_text = pdf_reader.pages[page_num].extract_text()
-        if page_text:  # handle empty pages
+        if page_text:  
             text += page_text
     return text
-
-# === Flask Routes ===
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
         text = ""
 
-        # Get uploaded files
+
         files = request.files.getlist('files[]')
 
-        # If files are uploaded and not empty filenames
+       
         if files and any(file.filename != '' for file in files):
             for file in files:
                 if file.filename.endswith('.pdf'):
@@ -92,7 +80,6 @@ def index():
                 elif file.filename.endswith('.txt'):
                     text += file.read().decode('utf-8')
         else:
-            # Use pasted text if no files
             text = request.form.get('text', '')
 
         num_questions = int(request.form['num_questions'])
